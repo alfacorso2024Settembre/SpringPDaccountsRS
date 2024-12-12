@@ -90,7 +90,7 @@ public class DaoAccounts implements ICrud<DtoAccounts, Integer> {
                     StatusType.valueOf(dtoAccount.getStatus()).getId()
             );
             logger.info("Account successfully created.");
-            // Fetch the last inserted ID (if needed).
+
             Integer id = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Integer.class);
             return id;
         } catch (Exception e) {
@@ -138,7 +138,7 @@ public class DaoAccounts implements ICrud<DtoAccounts, Integer> {
         String sql;
         Object[] params;
 
-        // Determine the search criteria
+
         if (Arrays.stream(RoleType.values()).anyMatch(t -> t.name().equals(textSearch))) {
             sql = "SELECT * FROM accounts WHERE idRole = ?";
             params = new Object[]{RoleType.valueOf(textSearch).getId()};
