@@ -57,8 +57,11 @@ public class DaoAccountsUtility {
 
         public static boolean verifyCredentials(DtoAccounts acc){
             boolean verif = false;
+
             verif = DaoAccountsUtility.validateEmail(acc.getEmail());
-            verif = DaoAccountsUtility.validatePassword(acc.getPassword());
+            if(verif == true) {
+                verif = DaoAccountsUtility.validatePassword(acc.getPassword());
+            }
             return verif;
         }
 

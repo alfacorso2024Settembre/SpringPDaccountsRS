@@ -61,6 +61,8 @@ public class DaoAccounts implements ICrud<DtoAccounts, Integer> {
 
     @Override
     public DtoAccounts search(Integer idAccount) throws DaoException {
+
+
         logger.info("Searching account by ID: {}", idAccount);
         String sql = "SELECT * FROM accounts WHERE idAccount = ?";
         try {
@@ -80,6 +82,12 @@ public class DaoAccounts implements ICrud<DtoAccounts, Integer> {
 
     @Override
     public Integer create(DtoAccounts dtoAccount) throws DaoException {
+
+        if(!DaoAccountsUtility.verifyCredentials(dtoAccount)){
+            logger.error("Dao:" + "email password format not valid");
+            throw new DaoException("Credentials format not valid");
+        }
+
         logger.info("Creating a new account: {}", dtoAccount);
         String sql = "INSERT INTO accounts (email, password, idRole, idStatus) VALUES (?, ?, ?, ?)";
         try {

@@ -1,6 +1,7 @@
 package it.alfasoft.myPersonalDriver.SpringPDaccountsRS;
 
 import it.alfasoft.myPersonalDriver.SpringPDaccountsRS.dao.DaoAccounts;
+import it.alfasoft.myPersonalDriver.SpringPDaccountsRS.dao.DaoAccountsUtility;
 import it.alfasoft.myPersonalDriver.SpringPDaccountsRS.dao.DtoAccountsRS;
 import it.alfasoft.myPersonalDriver.common.dao.DaoException;
 import it.alfasoft.myPersonalDriver.common.dao.dto.DtoAccounts;
@@ -41,16 +42,25 @@ public class AccountController {
             return ResponseEntity.ok(accountsRS);
         } catch (DaoException e) {
             logger.error("ErrorDao: ", e.getMessage());
-            return ResponseEntity.status(400).body("ErrorDao: " + e.getMessage());
+            return ResponseEntity.status(400).body("ErrorDao: Could not get all accounts");
         } catch (Exception e) {
             logger.error("Error: ", e.getMessage());
-            return ResponseEntity.status(400).body("Error: " + e.getMessage());
+            return ResponseEntity.status(500).body("Error: Internal Server Error.");
         }
     }
     @GetMapping("/email/{email}")
     public ResponseEntity<Object> getByEmail(@PathVariable String email) {
+
+
+
         logger.info("Fetching account by email: {}", email);
         try {
+            //initial check
+            if(!DaoAccountsUtility.validateEmail(email)){
+                logger.error("Email format is not correct: " + email);
+                return ResponseEntity.badRequest().build();
+            }
+
             List<DtoAccounts> accounts = daoAccounts.read(email);
 
 
@@ -72,17 +82,24 @@ public class AccountController {
             return ResponseEntity.ok(accountRS);
         } catch (DaoException e) {
             logger.error("Error fetching account by email: ", e.getMessage());
-            return ResponseEntity.status(400).body("ErrorDao: " + e.getMessage());
+            return ResponseEntity.status(400).body("ErrorDao: Could not get account with email: " + email );
         } catch (Exception e) {
             logger.error("Unexpected error: ", e.getMessage());
-            return ResponseEntity.status(400).body("Error: " + e.getMessage());
+            return ResponseEntity.status(500).body("Error: Internal server error");
         }
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Object> getAccountById(@PathVariable Integer id) {
+
         logger.info("Fetching account by ID: {}", id);
         try {
+            //initial check
+            if(id <= 0 ){
+                logger.error("ID cannot be a negative integer");
+                return ResponseEntity.badRequest().build();
+            }
+
             DtoAccounts account = daoAccounts.search(id);
             if (account== null ) {
                 logger.warn("No account found with id: {}", id);
@@ -97,15 +114,18 @@ public class AccountController {
             return ResponseEntity.ok(accountRS);
         } catch (DaoException e) {
             logger.error("Error fetching account with ID {}: " + id + e.getMessage());
-            return ResponseEntity.status(404).body("ErrorDao: " + e.getMessage());
+            return ResponseEntity.status(404).body("ErrorDao: Could not get account with id: " + id);
         } catch (Exception e) {
             logger.error("Unexpected error: ", e);
-            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+            return ResponseEntity.status(500).body("Error: Internal server error");
         }
     }
 
     @GetMapping("/search")
     public ResponseEntity<Object> searchAccounts(@RequestParam String filter) {
+
+        //initial check da fare dopo che aggiungio i enum
+
         logger.info("Searching accounts via /accounts/search?filter= with filter: {}", filter);
         try {
             List<DtoAccounts> accounts = daoAccounts.read(filter);
@@ -121,10 +141,10 @@ public class AccountController {
             return ResponseEntity.ok(accountsRS);
         } catch (DaoException e) {
             logger.error("Error searching accounts: " + e.getMessage());
-            return ResponseEntity.status(400).body("ErrorDao: " + e.getMessage());
+            return ResponseEntity.status(400).body("ErrorDao: Could not get accounts with filter : "+filter);
         } catch (Exception e) {
             logger.error("Unexpected error: " + e.getMessage());
-            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+            return ResponseEntity.status(500).body("Error: Internal Server Error");
         }
     }
 
@@ -138,15 +158,21 @@ public class AccountController {
                     dtoAccountRS.getRole(),
                     dtoAccountRS.getStatus()
             );
+
+            if(!DaoAccountsUtility.verifyCredentials(dtoAccount)){
+                logger.error("Credentials are not in a valid format");
+                return ResponseEntity.badRequest().build();
+            }
+
             Integer generatedId = daoAccounts.create(dtoAccount);
             logger.info("Account created successfully with ID: {}", generatedId);
             return ResponseEntity.status(201).body("Account created with ID: " + generatedId);
         } catch (DaoException e) {
-            logger.error("Error creating account: ", e);
-            return ResponseEntity.status(400).body("ErrorDao: " + e.getMessage());
+            logger.error("Error creating account: ", e.getMessage());
+            return ResponseEntity.status(400).body("ErrorDao: Create account failed!");
         } catch (Exception e) {
-            logger.error("Unexpected error: ", e);
-            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+            logger.error("Unexpected error: ", e.getMessage());
+            return ResponseEntity.status(500).body("Error: Internal Server Error ");
         }
     }
 
@@ -154,6 +180,7 @@ public class AccountController {
     public ResponseEntity<String> updateAccount(@PathVariable Integer id, @RequestBody DtoAccountsRS dtoAccountRS) {
         logger.info("Updating account with ID: {}", id);
         try {
+
             DtoAccounts dtoAccount = new DtoAccounts(
                     id,
                     dtoAccountRS.getEmail(),
@@ -161,6 +188,12 @@ public class AccountController {
                     dtoAccountRS.getRole(),
                     dtoAccountRS.getStatus()
             );
+
+            if(!DaoAccountsUtility.verifyCredentials(dtoAccount)){
+                logger.error("Credentials are not in a valid format");
+                return ResponseEntity.badRequest().build();
+            }
+
             int rowsAffected = daoAccounts.update(dtoAccount, id);
 
             if (rowsAffected > 0) {
@@ -171,11 +204,11 @@ public class AccountController {
                 return ResponseEntity.status(404).body("Error: Account not found");
             }
         } catch (DaoException e) {
-            logger.error("Error updating account: ", e);
-            return ResponseEntity.status(400).body("ErrorDao: " + e.getMessage());
+            logger.error("Error updating account: ", e.getMessage());
+            return ResponseEntity.status(400).body("ErrorDao: Failed to modify account.");
         } catch (Exception e) {
-            logger.error("Unexpected error: ", e);
-            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+            logger.error("Unexpected error: ", e.getMessage());
+            return ResponseEntity.status(500).body("Error: Internal Server Error.");
         }
     }
 
@@ -184,6 +217,14 @@ public class AccountController {
 
         logger.info("Deleting account with ID: {}", id);
         try {
+
+            //initial check
+            if(id <= 0 ){
+                logger.error("ID cannot be a negative integer");
+                return ResponseEntity.badRequest().build();
+            }
+
+
             int rowsDeleted = daoAccounts.delete(id);
             if (rowsDeleted > 0) {
                 logger.info("Account deleted successfully.");
@@ -194,11 +235,11 @@ public class AccountController {
                 return ResponseEntity.status(404).body("Error: Account not found");
             }
         } catch (DaoException e) {
-            logger.error("Error deleting account: ", e);
-            return ResponseEntity.status(400).body("ErrorDao: " + e.getMessage());
+            logger.error("Error deleting account: ",  e.getMessage());
+            return ResponseEntity.status(400).body("ErrorDao: Could not delete account with id:" + id );
         } catch (Exception e) {
-            logger.error("Unexpected error: ", e);
-            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+            logger.error("Unexpected error: ", e.getMessage());
+            return ResponseEntity.status(500).body("Error: Internal Server error.");
         }
     }
 }
