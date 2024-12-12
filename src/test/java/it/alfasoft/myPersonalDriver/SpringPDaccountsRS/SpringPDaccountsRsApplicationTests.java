@@ -195,12 +195,44 @@ class SpringPDaccountsRsApplicationTests {
 	}
 
 	@Test
-	void testDeleteAccount(){
-		//mocking
+	void testDeleteAccountSuccess() {
+		// Mocking
 		when(da.delete(anyInt())).thenReturn(1);
 
+		// Call
+		ResponseEntity<String> response = aController.exchange(
+				baseUrl + "/1",
+				HttpMethod.DELETE,
+				null,
+				String.class
+		);
 
+		// Verify and test
+		verify(da, times(1)).delete(1);
+		Assertions.assertNotNull(response, "Response should not be null");
+		Assertions.assertEquals(HttpStatus.OK, response.getStatusCode(), "Status code should be OK (200)");
+		Assertions.assertEquals("Account deleted successfully.", response.getBody(), "Response body should confirm successful deletion");
+	}
 
+	@Test
+	//account not found on delete da.delete returns 0
+	void testDeleteAccountFailure() {
+		// Mocking
+		when(da.delete(anyInt())).thenReturn(0);
+
+		// Call
+		ResponseEntity<String> response = aController.exchange(
+				baseUrl + "/1",
+				HttpMethod.DELETE,
+				null,
+				String.class
+		);
+
+		// Verify and test
+		verify(da, times(1)).delete(1);
+
+		Assertions.assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode(), "Status code should be (404)");
+		Assertions.assertEquals("Error: Account not found", response.getBody(), "Response body should confirm successful deletion");
 	}
 
 
