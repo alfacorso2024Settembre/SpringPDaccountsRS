@@ -66,6 +66,7 @@ public class DaoAccounts implements ICrud<DtoAccounts, Integer> {
         logger.info("Searching account by ID: {}", idAccount);
         String sql = "SELECT * FROM accounts WHERE idAccount = ?";
         try {
+
             return jdbcTemplate.queryForObject(sql, (rs, rowNum) ->
                     new DtoAccounts(
                             rs.getInt("idAccount"),

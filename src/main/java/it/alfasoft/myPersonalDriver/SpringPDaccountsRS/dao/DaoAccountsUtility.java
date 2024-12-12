@@ -5,6 +5,7 @@ import it.alfasoft.myPersonalDriver.common.dao.dto.DtoAccounts;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -65,6 +66,13 @@ public class DaoAccountsUtility {
             return verif;
         }
 
+        public static boolean validateRole(String text){
+           return Arrays.stream(RoleType.values()).anyMatch(t -> t.name().equals(text));
+        }
+
+        public static boolean validateStatus(String text){
+            return Arrays.stream(StatusType.values()).anyMatch(t -> t.name().equals(text));
+        }
 
 
 

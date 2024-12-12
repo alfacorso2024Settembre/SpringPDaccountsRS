@@ -163,6 +163,10 @@ public class AccountController {
                 logger.error("Credentials are not in a valid format");
                 return ResponseEntity.badRequest().build();
             }
+            if(!DaoAccountsUtility.validateRole(dtoAccount.getRole()) || !DaoAccountsUtility.validateStatus(dtoAccount.getStatus())){
+                logger.error("Status or role does not exist");
+                return ResponseEntity.badRequest().build();
+            }
 
             Integer generatedId = daoAccounts.create(dtoAccount);
             logger.info("Account created successfully with ID: {}", generatedId);
@@ -191,6 +195,10 @@ public class AccountController {
 
             if(!DaoAccountsUtility.verifyCredentials(dtoAccount)){
                 logger.error("Credentials are not in a valid format");
+                return ResponseEntity.badRequest().build();
+            }
+            if(!DaoAccountsUtility.validateRole(dtoAccount.getRole()) || !DaoAccountsUtility.validateStatus(dtoAccount.getStatus())){
+                logger.error("Status or role does not exist");
                 return ResponseEntity.badRequest().build();
             }
 
