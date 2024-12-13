@@ -3,9 +3,12 @@ package it.alfasoft.myPersonalDriver.SpringPDaccountsRS;
 import it.alfasoft.myPersonalDriver.SpringPDaccountsRS.dao.DaoAccounts;
 import it.alfasoft.myPersonalDriver.SpringPDaccountsRS.dao.DaoAccountsUtility;
 import it.alfasoft.myPersonalDriver.SpringPDaccountsRS.dao.DtoAccountsRS;
-import it.alfasoft.myPersonalDriver.common.dao.DaoException;
+import it.alfasoft.myPersonalDriver.common.Exceptions.DaoException;
+import it.alfasoft.myPersonalDriver.common.Exceptions.ErrorCodes;
 import it.alfasoft.myPersonalDriver.common.dao.dto.DtoAccounts;
+import it.alfasoft.myPersonalDriver.common.dao.dto.RoleType;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,11 +28,24 @@ public class AccountController {
     private DaoAccounts daoAccounts;
 
     @GetMapping
-    public ResponseEntity<Object> getAllAccounts() {
-        logger.info("Fetching all accounts via /accounts.");
+    public ResponseEntity<Object> getAccounts(
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) String filter
+    ) {
+        logger.info("Fetching accounts, offset={}, limit={}, textSearch={}",
+                offset, limit, filter);
+
+        if(limit <= 0 || offset < 0){
+            logger.error("Valori limit o offset non corretti: limit = " + limit + " e offset = " + offset);
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).header("PDerror", "valori input non corretti").build();
+        }
+
         try {
-            List<DtoAccounts> accounts = daoAccounts.read();
-            //per non esporere l id
+
+            List<DtoAccounts> accounts = daoAccounts.read(offset, limit, filter);
+
+
             List<DtoAccountsRS> accountsRS = accounts.stream()
                     .map(account -> new DtoAccountsRS(
                             account.getEmail(),
@@ -38,16 +54,20 @@ public class AccountController {
                             account.getStatus()
                     ))
                     .collect(Collectors.toList());
+
             logger.info("Accounts fetched successfully. Count: {}", accountsRS.size());
             return ResponseEntity.ok(accountsRS);
+
         } catch (DaoException e) {
-            logger.error("ErrorDao: ", e.getMessage());
-            return ResponseEntity.status(400).body("ErrorDao: Could not get all accounts");
+            logger.error("DaoException: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).header("PDerror", e.toString()).build();
         } catch (Exception e) {
-            logger.error("Error: ", e.getMessage());
-            return ResponseEntity.status(500).body("Error: Internal Server Error.");
+            logger.error("Unexpected error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).header("PDerror", ErrorCodes.READ_ERROR.toString()).build();
         }
     }
+
+    /*
     @GetMapping("/email/{email}")
     public ResponseEntity<Object> getByEmail(@PathVariable String email) {
 
@@ -250,4 +270,6 @@ public class AccountController {
             return ResponseEntity.status(500).body("Error: Internal Server error.");
         }
     }
+
+     */
 }

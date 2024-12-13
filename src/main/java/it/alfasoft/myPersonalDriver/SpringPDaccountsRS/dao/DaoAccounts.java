@@ -1,11 +1,12 @@
 package it.alfasoft.myPersonalDriver.SpringPDaccountsRS.dao;
 
-import it.alfasoft.myPersonalDriver.common.dao.DaoException;
+import it.alfasoft.myPersonalDriver.common.Exceptions.DaoException;
+import it.alfasoft.myPersonalDriver.common.Exceptions.ErrorCodes;
 import it.alfasoft.myPersonalDriver.common.dao.ICrud;
 import it.alfasoft.myPersonalDriver.common.dao.dto.DtoAccounts;
 import it.alfasoft.myPersonalDriver.common.dao.dto.RoleType;
-import it.alfasoft.myPersonalDriver.common.dao.dto.StatusType;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.CannotGetJdbcConnectionException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.slf4j.Logger;
@@ -43,12 +44,174 @@ public class DaoAccounts implements ICrud<DtoAccounts, Integer> {
             );
             logger.info("Number of accounts fetched: {}", accounts.size());
             return accounts;
+        }catch (CannotGetJdbcConnectionException ex) {
+            throw new DaoException(ErrorCodes.CONNECTION_ERROR, "read()", ex.getMessage());
         } catch (Exception e) {
             logger.error("Error fetching all accounts: ", e);
-            throw new DaoException("Unable to fetch accounts"+ e.getMessage());
+            throw new DaoException(ErrorCodes.READ_ERROR, "read" , e.getMessage());
         }
     }
 
+    @Override
+    public List<DtoAccounts> read(int i, int i1) throws DaoException {
+        return List.of();
+    }
+
+    @Override
+    public List<DtoAccounts> read(DtoAccounts dtoAccounts) throws DaoException {
+        return List.of();
+    }
+
+    @Override
+    public List<DtoAccounts> read(String s) throws DaoException {
+        return List.of();
+    }
+
+    @Override
+    public Integer create(DtoAccounts dtoAccounts) throws DaoException {
+        return 0;
+    }
+
+    @Override
+    public int update(DtoAccounts dtoAccounts, Integer integer) throws DaoException {
+        return 0;
+    }
+
+    @Override
+    public int delete(Integer integer) throws DaoException {
+        return 0;
+    }
+
+    @Override
+    public DtoAccounts search(Integer integer) throws DaoException {
+        return null;
+    }
+    public List<DtoAccounts> read(int offset, int limit, String textSearch) throws DaoException {
+        logger.info("Fetching accounts with offset={}, limit={}, textSearch={}", offset, limit, textSearch);
+
+        StringBuilder sqlBuilder = new StringBuilder("SELECT * FROM accounts");
+        List<Object> params = new ArrayList<>();
+
+
+        if (textSearch != null && !textSearch.isEmpty()) {
+
+
+            if (Arrays.stream(RoleType.values()).anyMatch(r -> r.name().equals(textSearch))) {
+                sqlBuilder.append(" WHERE idRole = ?");
+                params.add(RoleType.valueOf(textSearch).getId());
+
+
+            } else if (Arrays.stream(StatusType.values()).anyMatch(s -> s.name().equals(textSearch))) {
+                sqlBuilder.append(" WHERE idStatus = ?");
+                params.add(StatusType.valueOf(textSearch).getId());
+
+
+            } else if (textSearch.matches(".*@.*")) {
+                sqlBuilder.append(" WHERE email = ?");
+                params.add(textSearch);
+
+            } else {
+
+                logger.error("Invalid search criteria: {}", textSearch);
+                throw new DaoException(ErrorCodes.INPUT_FORMAT_ERROR, "read()","Filter invalid format!");
+            }
+        }
+
+
+        sqlBuilder.append(" LIMIT ? OFFSET ?");
+        params.add(limit);
+        params.add(offset);
+
+        String sql = sqlBuilder.toString();
+        logger.info("Final SQL Query: {}", sql);
+
+        try {
+            return jdbcTemplate.query(sql, params.toArray(), (rs, rowNum) ->
+                    new DtoAccounts(
+                            rs.getInt("idAccount"),
+                            rs.getString("email"),
+                            rs.getString("password"),
+                            rs.getString("idRole"),
+                            rs.getString("idStatus")
+                    )
+            );
+        } catch (CannotGetJdbcConnectionException ex) {
+            throw new DaoException(ErrorCodes.CONNECTION_ERROR, "read()", ex.getMessage());
+        } catch (Exception e) {
+            logger.error("Error fetching accounts: ", e);
+            throw new DaoException(ErrorCodes.READ_ERROR, "read", e.getMessage());
+        }
+    }
+
+/*
+    public List<DtoAccounts> read(int offset, int limit, String email, String role, String status) throws DaoException {
+        logger.info("Fetching accounts with offset={}, limit={}, email={}, role={}, status={}",
+                offset, limit, email, role, status);
+
+        // Build the SQL query dynamically
+        StringBuilder sqlBuilder = new StringBuilder("SELECT * FROM accounts WHERE 1=1");
+        List<Object> params = new ArrayList<>();
+
+        // -- Filter by email
+        if (email != null && !email.isEmpty()) {
+            sqlBuilder.append(" AND email LIKE ?");
+            params.add("%" + email + "%");
+        }
+
+        // -- Filter by role: parse the string into enum, then use its id
+        if (role != null && !role.isEmpty()) {
+            try {
+                RoleType roleEnum = RoleType.valueOf(role);  // e.g. "User", "Driver", "Admin"
+                sqlBuilder.append(" AND idRole = ?");
+                params.add(roleEnum.getId());               // Store the enum’s int value
+            } catch (IllegalArgumentException e) {
+                // This exception happens if the string doesn't match any enum constant
+                logger.error("Invalid role specified: {}", role);
+                throw new DaoException(ErrorCodes.READ_ERROR, "read",
+                        "Invalid role specified: " + role);
+            }
+        }
+
+        // -- Filter by status (assuming StatusType is also an enum with an integer ID)
+        if (status != null && !status.isEmpty()) {
+            try {
+                StatusType statusEnum = StatusType.valueOf(status); // e.g. "Active", "Disabled", etc.
+                sqlBuilder.append(" AND idStatus = ?");
+                params.add(statusEnum.getId()); // or however you map statusEnum to its DB value
+            } catch (IllegalArgumentException e) {
+                logger.error("Invalid status specified: {}", status);
+                throw new DaoException(ErrorCodes.READ_ERROR, "read",
+                        "Invalid status specified: " + status);
+            }
+        }
+
+        // -- Pagination
+        sqlBuilder.append(" LIMIT ? OFFSET ?");
+        params.add(limit);
+        params.add(offset);
+
+        String sql = sqlBuilder.toString();
+        logger.info("Final SQL Query: {}", sql);
+
+        try {
+            return jdbcTemplate.query(sql, params.toArray(), (rs, rowNum) ->
+                    new DtoAccounts(
+                            rs.getInt("idAccount"),
+                            rs.getString("email"),
+                            rs.getString("password"),
+                            rs.getString("idRole"),
+                            rs.getString("idStatus")
+                    )
+            );
+        } catch (CannotGetJdbcConnectionException ex) {
+            throw new DaoException(ErrorCodes.CONNECTION_ERROR, "read()", ex.getMessage());
+        } catch (Exception e) {
+            logger.error("Error fetching accounts: ", e);
+            throw new DaoException(ErrorCodes.READ_ERROR, "read", e.getMessage());
+        }
+    }
+*/
+    /*
     @Override
     public List<DtoAccounts> read(int i, int i1) throws DaoException {
         return List.of();
@@ -177,4 +340,5 @@ public class DaoAccounts implements ICrud<DtoAccounts, Integer> {
             throw new DaoException("Unable to search accounts" + e.getMessage());
         }
     }
+     */
 }
